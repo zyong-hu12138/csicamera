@@ -105,7 +105,7 @@ int main()
 		perror("lcd mmap failed:");
 	}
 	/*打开设备*/
-	int fd = open("/dev/video0", O_RDWR);///////////////video0?
+	int fd = open("/dev/video0", O_RDWR);
 	if (fd < 0) {
 		perror("Open video0:");
 		return -1;

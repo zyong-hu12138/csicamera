@@ -11,15 +11,16 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
+#include <iostream>
 #include <SDL2/SDL.h>
-
+using namespace std;
 #define VIDEO_DEVICE "/dev/video0"
-#define WIDTH 640
-#define HEIGHT 480
+#define WIDTH 1280
+#define HEIGHT 960
 #define PIXEL_FORMAT V4L2_PIX_FMT_YUYV
 
 int main() {
+    int ret;
     int fd = open(VIDEO_DEVICE, O_RDWR);
     if (fd == -1) {
         perror("Failed to open video device");
@@ -30,14 +31,22 @@ int main() {
     vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     vfmt.fmt.pix.width = WIDTH;
     vfmt.fmt.pix.height = HEIGHT;
-    vfmt.fmt.pix.pixelformat = PIXEL_FORMAT;
-
+    vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    
     if (ioctl(fd, VIDIOC_S_FMT, &vfmt) == -1) {
         perror("Failed to set video format");
         close(fd);
         return 1;
     }
-
+    memset(&vfmt, 0, sizeof(vfmt));
+    vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    ret = ioctl(fd, VIDIOC_G_FMT, &vfmt);
+    if (ret < 0) {
+        perror("Get format failed:");
+        return -1;
+    }
+    cout<<"width:"<<vfmt.fmt.pix.width<<"height"<<vfmt.fmt.pix.height<<endl;
+    cout<<"pixelformat:"<<vfmt.fmt.pix.pixelformat<<endl;
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -46,8 +55,7 @@ int main() {
     }
 
     // Create SDL window and renderer
-    SDL_Window* window = SDL_CreateWindow("Camera Feed", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                          WIDTH, HEIGHT, 0);
+    SDL_Window* window = SDL_CreateWindow("Camera Feed", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,WIDTH, HEIGHT, 0);
     if (!window) {
         fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         SDL_Quit();
@@ -64,17 +72,6 @@ int main() {
         return 1;
     }
 
-    // Allocate memory for video buffer
-    // size_t buffer_size = vfmt.fmt.pix.sizeimage;
-    // void* buffer = malloc(buffer_size);
-    // if (!buffer) {
-    //     fprintf(stderr, "Failed to allocate buffer memory\n");
-    //     SDL_DestroyRenderer(renderer);
-    //     SDL_DestroyWindow(window);
-    //     SDL_Quit();
-    //     close(fd);
-    //     return 1;
-    // }
 
 
     //申请内核缓冲区队列
@@ -82,12 +79,12 @@ int main() {
     reqbuffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     reqbuffer.count = 4;
     reqbuffer.memory = V4L2_MEMORY_MMAP;//映射方式
-    int ret = ioctl(fd, VIDIOC_REQBUFS, &reqbuffer);
+    ret = ioctl(fd, VIDIOC_REQBUFS, &reqbuffer);
     if (ret < 0) {
         perror("Request Queue space failed:");
         return -1;
     }
-    //yi\\映射到用户空间
+    //映射到用户空间
     struct v4l2_buffer mapbuffer;
     int i;
     unsigned char *mptr[4];
@@ -122,21 +119,15 @@ int main() {
     }
     //从队列中提取一帧数据
     unsigned char *buffer = NULL;
+
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YUY2,
                                              SDL_TEXTUREACCESS_STREAMING,
                                              WIDTH, HEIGHT);
 
     SDL_Event event;
     int quit = 0;
+    struct v4l2_buffer readbuffer;
     while (!quit) {
-        // Read video frame
-        // ssize_t bytes_read = read(fd, buffer, buffer_size);//直接用read或许会有一些问题
-        // if (bytes_read == -1) {
-        //     perror("Failed to read video frame");
-        //     break;
-        // }
-        //开始采集图像 
-        struct v4l2_buffer readbuffer;
         readbuffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         ret = ioctl(fd, VIDIOC_DQBUF, &readbuffer);
         if (ret < 0) {
@@ -145,7 +136,7 @@ int main() {
         }
         //将图像显示到屏幕
         // Update SDL texture
-        cout<<mptr[readbuffer.index]<<endl;
+        cout<<mptr[readbuffer.index].size()<<endl;
         if (SDL_UpdateTexture(texture, NULL, mptr[readbuffer.index], vfmt.fmt.pix.width * 2) != 0) {
             fprintf(stderr, "SDL_UpdateTexture failed: %s\n", SDL_GetError());
             break;
@@ -171,6 +162,12 @@ int main() {
 
     // Free resources
     free(buffer);
+    ret = ioctl(fd, VIDIOC_QBUF,&readbuffer);
+    if(ret<0){
+        perror("stop failed");
+        return -1;
+    }
+        
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
