@@ -29,19 +29,19 @@ static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
     // 处理数据
     // 这里可以对数据进行保存、处理或其他操作
     // 在本例中，我们将数据写入文件中
-    // FILE *file = fopen(filename, "wb");
-    // if (file != NULL) {
-    //     fwrite(map.data, 1, map.size, file);
-    //     fclose(file);
-    // }
-unsigned char *p = map.data;
+    FILE *file = fopen(filename, "wb");
+    if (file != NULL) {
+        fwrite(map.data, 1, map.size, file);
+        fclose(file);
+    }
+// unsigned char *p = map.data;
 // for (size_t i = 0; i < map.size; i += 2) {
 //         // YUYV 格式的数据是交错的，每两个字节表示一个像素的Y和U/V分量
 //         unsigned char Y = map.data[i];
 //         unsigned char U = map.data[i + 1];
 //         unsigned char V = map.data[i + 3];
-        
 //         // printf("YUV: Y=%u, U=%u, V=%u\n", Y, U, V);
+//         fprintf(file,"%c %c %c",Y,U,V);
 //     }
     // 取消内存映射并释放sample
     gst_buffer_unmap(buffer, &map);
@@ -73,7 +73,8 @@ int main(int argc, char *argv[]) {
 
     gst_init(&argc,&argv);
 
-    v4l2src = gst_element_factory_make("v4l2src" , "v4l2src" );
+    // v4l2src = gst_element_factory_make("v4l2src" , "v4l2src" );
+    v4l2src = gst_element_factory_make("nvv4l2camerasrc" , "v4l2src" );
     videoconvert = gst_element_factory_make("videoconvert" , "videoconvert" );
     tee = gst_element_factory_make("tee" , "tee" );
     queue1 = gst_element_factory_make("queue" , "queue1" );
