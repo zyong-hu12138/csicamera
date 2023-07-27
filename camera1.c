@@ -55,21 +55,21 @@ static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
 int main(int argc, char *argv[]) {
     GstElement *pipeline;
     GstElement *nvv4l2camerasrc;
-    GstElement *nvvideoconvert;
+    GstElement *srccaps;
+    GstElement *nvvideoconvert1;
+    GstElement *capsfilter;
     GstElement *tee;
     GstElement *queue1;
     GstElement *queue2;
+    GstElement *nvjpegenc;
     GstElement *appsink;
-    GstElement *rtmpsink;
-    GstElement *flvmux;
-    GstElement *nvvidconv;
+    GstElement *nvvideoconvert2;
     GstElement *encoder;
-    GstElement *nvvidconv2;//////////////////////
-    GstElement *nvjpegenc;/////////////////////////////
-    GstElement *capsfilter;/////////////////////////////
-    GstElement *capsfilter1;
-    GstElement *capsfilter2;
-    GstElement *capsfilter3;
+    GstElement *rtmpcaps;
+    GstElement *flvmux;
+    GstElement *rtmpsink;
+    GstElement *queue2filter;
+    
 
     GstBus *bus;
     GstMessage *msg;
@@ -80,38 +80,36 @@ int main(int argc, char *argv[]) {
     GstPad *queue2_pad;
 
     gst_init(&argc,&argv);
-
-    nvv4l2camerasrc = gst_element_factory_make("nvv4l2camerasrc" , "nvv4l2camerasrc" );/////////////////////
-    nvvideoconvert = gst_element_factory_make("nvvidconv" , "nvvideoconvert" );
+    ////create elements
+    nvv4l2camerasrc = gst_element_factory_make("nvv4l2camerasrc" , "nvv4l2camerasrc" );
+    srccaps = gst_element_factory_make("capsfilter" , "srccaps" );
+    nvvideoconvert1 = gst_element_factory_make("nvvidconv" , "nvvideoconvert1" );
+    capsfilter = gst_element_factory_make("capsfilter" , "capsfilter" );
     tee = gst_element_factory_make("tee" , "tee" );
     queue1 = gst_element_factory_make("queue" , "queue1" );
     queue2 = gst_element_factory_make("queue" , "queue2" );
+    nvjpegenc = gst_element_factory_make("nvjpegenc" , "nvjpegenc" );
     appsink = gst_element_factory_make("appsink" , "appsink" );
-    rtmpsink = gst_element_factory_make("rtmpsink" , "rtmpsink" );
-    flvmux = gst_element_factory_make("flvmux" , "flvmux" );
-    nvvidconv = gst_element_factory_make("nvvidconv" , "nvvidconv" );
     encoder = gst_element_factory_make("omxh264enc" , "encoder" );
-    nvvidconv2 = gst_element_factory_make("nvvidconv","nvvidconv2");///////////////////
-    nvjpegenc = gst_element_factory_make("nvjpegenc","nvjpegenc");////////////////////
-    capsfilter = gst_element_factory_make("capsfilter","capsfilter");////////////////////
-    capsfilter1 = gst_element_factory_make("capsfilter","capsfilter1");
-    capsfilter2 = gst_element_factory_make("capsfilter","capsfilter2");
-    capsfilter3 = gst_element_factory_make("capsfilter","capsfilter3");
-
+    rtmpcaps = gst_element_factory_make("capsfilter" , "rtmpcaps" );
+    flvmux = gst_element_factory_make("flvmux" , "flvmux" );
+    rtmpsink = gst_element_factory_make("rtmpsink" , "rtmpsink" );
+    nvvideoconvert2 = gst_element_factory_make("nvvidconv" , "nvvideoconvert2" );
     pipeline = gst_pipeline_new("test-pipeline");
+    queue2filter = gst_element_factory_make("capsfilter" , "queue2filter" );
 
-    if(!pipeline || !nvv4l2camerasrc || !nvvideoconvert || !tee || !queue1|| !queue2 ||
-     !appsink || !rtmpsink || !flvmux || !nvvidconv || !encoder || !nvvidconv2 || 
-     !nvjpegenc || !capsfilter || !capsfilter1 || !capsfilter2 || !capsfilter3)///////////////////
+    if(!pipeline || !nvv4l2camerasrc || !srccaps || !nvvideoconvert1 || !capsfilter || 
+    !tee || !queue1 || !queue2 || !nvjpegenc || !appsink || 
+    !encoder || !rtmpcaps || !flvmux || !rtmpsink || !nvvideoconvert2 || !queue2filter)
     {
         g_printerr("Not all elements could be created.\n");
         return -1;
     }
     
-    gst_bin_add_many (GST_BIN(pipeline) , nvv4l2camerasrc , nvvideoconvert , tee , queue1 ,
-     queue2 , appsink , rtmpsink , flvmux , nvvidconv , encoder, nvvidconv2 , nvjpegenc , 
-     capsfilter , capsfilter1 , capsfilter2 , capsfilter3 , NULL);////////////////////
-
+    gst_bin_add_many (GST_BIN(pipeline) , nvv4l2camerasrc , srccaps , nvvideoconvert1 , capsfilter ,
+    tee , queue1 , queue2 , nvjpegenc , appsink , encoder , rtmpcaps , flvmux , rtmpsink , nvvideoconvert2 , queue2filter , NULL);
+    
+    //connect tee and queue1&queue2
     GstPadTemplate *tee_src_pad_template;
     tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(tee),"src_%u");
     tee_pad1 = gst_element_request_pad(tee,tee_src_pad_template,NULL,NULL);
@@ -128,20 +126,20 @@ int main(int argc, char *argv[]) {
     gst_object_unref(queue1_pad);
     gst_object_unref(queue2_pad);
 
-    // if(gst_element_link_many(nvv4l2camerasrc  ,  capsfilter , tee , NULL)!=TRUE)
-    // if(gst_element_link_many(nvv4l2camerasrc  ,  capsfilter , tee , NULL)!=TRUE)
-    // {
-    //     g_printerr("Elements1 could not be linked.\n");
-    //     gst_object_unref(pipeline);
-    //     return -1;
-    // }
-    if(gst_element_link_many(queue1 , nvvidconv2 , capsfilter1 , nvjpegenc ,appsink , NULL)!=TRUE ) /////
+    ///connect all the elements
+    if(gst_element_link_many(nvv4l2camerasrc , srccaps , nvvideoconvert1 , capsfilter , tee , NULL)!=TRUE)
+    {
+        g_printerr("Elements1 could not be linked.\n");
+        gst_object_unref(pipeline);
+        return -1;
+    }
+    if(gst_element_link_many(queue1 , nvjpegenc ,appsink , NULL)!=TRUE ) /////
     {
         g_printerr("Elements2 could not be linked.\n");
         gst_object_unref(pipeline);
         return -1;
     }
-    if( gst_element_link_many(queue2 ,  nvvidconv , capsfilter2 , encoder , capsfilter3 , flvmux , rtmpsink , NULL)!=TRUE)
+    if( gst_element_link_many(queue2 ,  encoder , rtmpcaps , flvmux , rtmpsink , NULL)!=TRUE)
         {
             g_printerr("Elements3 could not be linked.\n");
             gst_object_unref(pipeline);
@@ -150,7 +148,7 @@ int main(int argc, char *argv[]) {
 
     // 设置appsink的回调函数
     g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.jpg ");
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.jpg");
     g_object_set(nvv4l2camerasrc , "device" , "/dev/video1" ,  NULL);
 
     GstCaps *caps;
@@ -163,14 +161,8 @@ int main(int argc, char *argv[]) {
     GstCapsFeatures *feature = gst_caps_features_new("memory:NVMM",NULL);
     gst_caps_set_features(caps,0,feature);
 
-    g_object_set(G_OBJECT(capsfilter) , "caps" , caps , NULL);
-    
-    if(gst_element_link_filtered(nvv4l2camerasrc  ,  tee , caps )!=TRUE)
-    {
-        g_printerr("Elements1 could not be linked.\n");
-        gst_object_unref(pipeline);
-        return -1;
-    }
+    g_object_set(G_OBJECT(srccaps) , "caps" , caps , NULL);
+    gst_caps_unref(caps);
 
     g_object_set(rtmpsink , "location" , "rtmp://livepush.orca-tech.cn/live/Testttttt?txSecret=8534bcc7c701c866c9a9ca4b1bde28e1&txTime=653B985A",NULL);
     g_object_set(encoder , "bitrate" , 2000000 , NULL);
@@ -179,27 +171,24 @@ int main(int argc, char *argv[]) {
     g_object_set(encoder , "preset-level" , 1 , NULL);
     g_object_set(encoder , "iframeinterval" , 30 , NULL);
 
-
-    caps = gst_caps_new_simple("video/x-raw","format" , G_TYPE_STRING ,"NV12",NULL);
+    GstCaps *filtercaps;
+    filtercaps = gst_caps_new_simple("video/x-raw",
+                                    "format" , G_TYPE_STRING ,"NV12",
+                                     "width" , G_TYPE_INT , 960 ,
+                                     "height" , G_TYPE_INT , 720 , 
+                                     "framerate" , GST_TYPE_FRACTION , 30 , 1 ,NULL);
+    feature = gst_caps_features_new("memory:NVMM",NULL);
+    gst_caps_set_features(filtercaps,0,feature);
+    g_object_set(G_OBJECT(capsfilter) , "caps" , filtercaps , NULL);
+    g_object_set(G_OBJECT(queue2filter) , "caps" , filtercaps , NULL);/////////////////////
+    gst_caps_unref(filtercaps);
     
-    gst_caps_set_features(caps,0,feature);
-    g_object_set(G_OBJECT(capsfilter2) , "caps" , caps , NULL);
- 
-
-    caps = gst_caps_new_simple("video/x-raw",
-                                "width" , G_TYPE_INT , 640,
-                                "height" , G_TYPE_INT , 480 , 
-                                "format" , G_TYPE_STRING , "NV12",NULL);
-                                  
-    gst_caps_set_features(caps,0,feature);
-    g_object_set(G_OBJECT(capsfilter1) , "caps" , caps , NULL);
-
-    
-    caps = gst_caps_new_simple("video/x-h264",
+    GstCaps *capsrtmp;
+    capsrtmp = gst_caps_new_simple("video/x-h264",
                                 "stream-format" , G_TYPE_STRING , "avc",
                                 NULL);
-    g_object_set(G_OBJECT(capsfilter3) , "caps" , caps , NULL);
-    gst_caps_unref(caps);
+    g_object_set(rtmpcaps , "caps" , capsrtmp , NULL);
+    gst_caps_unref(capsrtmp);
 
     // 启动pipeline
     ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
