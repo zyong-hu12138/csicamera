@@ -129,12 +129,12 @@ int main(int argc, char *argv[]) {
     gst_object_unref(queue2_pad);
 
     // if(gst_element_link_many(nvv4l2camerasrc  ,  capsfilter , tee , NULL)!=TRUE)
-    if(gst_element_link_many(nvv4l2camerasrc  ,  capsfilter , tee , NULL)!=TRUE)
-    {
-        g_printerr("Elements1 could not be linked.\n");
-        gst_object_unref(pipeline);
-        return -1;
-    }
+    // if(gst_element_link_many(nvv4l2camerasrc  ,  capsfilter , tee , NULL)!=TRUE)
+    // {
+    //     g_printerr("Elements1 could not be linked.\n");
+    //     gst_object_unref(pipeline);
+    //     return -1;
+    // }
     if(gst_element_link_many(queue1 , nvvidconv2 , capsfilter1 , nvjpegenc ,appsink , NULL)!=TRUE ) /////
     {
         g_printerr("Elements2 could not be linked.\n");
@@ -150,18 +150,27 @@ int main(int argc, char *argv[]) {
 
     // 设置appsink的回调函数
     g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.yuv ");
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.jpg ");
     g_object_set(nvv4l2camerasrc , "device" , "/dev/video1" ,  NULL);
 
     GstCaps *caps;
-    caps = gst_caps_new_simple("video/x-raw(memory:NVMM)",
+    caps = gst_caps_new_simple("video/x-raw",
                                 "format", G_TYPE_STRING, "UYVY",
                                 "width", G_TYPE_INT, 1280,
                                 "height", G_TYPE_INT, 960,
                                 "framerate", GST_TYPE_FRACTION, 30, 1,
                                 NULL);
+    GstCapsFeatures *feature = gst_caps_features_new("memory:NVMM",NULL);
+    gst_caps_set_features(caps,0,feature);
+
     g_object_set(G_OBJECT(capsfilter) , "caps" , caps , NULL);
     
+    if(gst_element_link_filtered(nvv4l2camerasrc  ,  tee , caps )!=TRUE)
+    {
+        g_printerr("Elements1 could not be linked.\n");
+        gst_object_unref(pipeline);
+        return -1;
+    }
 
     g_object_set(rtmpsink , "location" , "rtmp://livepush.orca-tech.cn/live/Testttttt?txSecret=8534bcc7c701c866c9a9ca4b1bde28e1&txTime=653B985A",NULL);
     g_object_set(encoder , "bitrate" , 2000000 , NULL);
@@ -171,14 +180,18 @@ int main(int argc, char *argv[]) {
     g_object_set(encoder , "iframeinterval" , 30 , NULL);
 
 
-    caps = gst_caps_new_simple("video/x-raw(memory:NVMM)","format" , G_TYPE_STRING ,"NV12",NULL);
+    caps = gst_caps_new_simple("video/x-raw","format" , G_TYPE_STRING ,"NV12",NULL);
+    
+    gst_caps_set_features(caps,0,feature);
     g_object_set(G_OBJECT(capsfilter2) , "caps" , caps , NULL);
  
 
-    caps = gst_caps_new_simple("video/x-raw(memory:NVMM)",
+    caps = gst_caps_new_simple("video/x-raw",
                                 "width" , G_TYPE_INT , 640,
                                 "height" , G_TYPE_INT , 480 , 
                                 "format" , G_TYPE_STRING , "NV12",NULL);
+                                  
+    gst_caps_set_features(caps,0,feature);
     g_object_set(G_OBJECT(capsfilter1) , "caps" , caps , NULL);
 
     
