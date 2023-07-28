@@ -1,6 +1,7 @@
 #include <gst/gst.h>
 #include <stdio.h>
 #include <gst/video/video.h>
+
 // 回调函数，处理从appsink接收到的数据
 static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
     GstSample *sample;
@@ -36,16 +37,8 @@ static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
         fwrite(map.data, 1, map.size, file);
         fclose(file);
     }
-// unsigned char *p = map.data;
-// for (size_t i = 0; i < map.size; i += 2) {
-//         // YUYV 格式的数据是交错的，每两个字节表示一个像素的Y和U/V分量
-//         unsigned char Y = map.data[i];
-//         unsigned char U = map.data[i + 1];
-//         unsigned char V = map.data[i + 3];
-        
-//         // printf("YUV: Y=%u, U=%u, V=%u\n", Y, U, V);
-//     }
-    // 取消内存映射并释放sample
+
+//     取消内存映射并释放sample
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
 
@@ -68,9 +61,12 @@ int main(int argc, char *argv[]) {
     GstElement *rtmpcaps;
     GstElement *flvmux;
     GstElement *rtmpsink;
-    GstElement *queue2filter;
+    GstElement *queue1filter;
+    // GstElement *queue2filter;
+    GstElement *nvvideoconv;
+    GstElement *rgbcaps;
+    GstElement *videoconvert;
     
-
     GstBus *bus;
     GstMessage *msg;
     GstStateChangeReturn ret;
@@ -96,18 +92,21 @@ int main(int argc, char *argv[]) {
     rtmpsink = gst_element_factory_make("rtmpsink" , "rtmpsink" );
     nvvideoconvert2 = gst_element_factory_make("nvvidconv" , "nvvideoconvert2" );
     pipeline = gst_pipeline_new("test-pipeline");
-    queue2filter = gst_element_factory_make("capsfilter" , "queue2filter" );
+    queue1filter = gst_element_factory_make("capsfilter" , "queue1filter" );
+    nvvideoconv = gst_element_factory_make("nvvidconv" , "nvvideoconv" );
+    rgbcaps = gst_element_factory_make("capsfilter" , "rgbcaps" );
+    videoconvert = gst_element_factory_make("videoconvert" , "videoconvert" );
 
     if(!pipeline || !nvv4l2camerasrc || !srccaps || !nvvideoconvert1 || !capsfilter || 
-    !tee || !queue1 || !queue2 || !nvjpegenc || !appsink || 
-    !encoder || !rtmpcaps || !flvmux || !rtmpsink || !nvvideoconvert2 || !queue2filter)
-    {
-        g_printerr("Not all elements could be created.\n");
-        return -1;
-    }
+        !tee || !queue1 || !queue2 || !nvjpegenc || !appsink || 
+        !encoder || !rtmpcaps || !flvmux || !rtmpsink || !nvvideoconvert2 ||!queue1filter || !nvvideoconv || !rgbcaps || !videoconvert)
+        {
+            g_printerr("Not all elements could be created.\n");
+            return -1;
+        }
     
-    gst_bin_add_many (GST_BIN(pipeline) , nvv4l2camerasrc , srccaps , nvvideoconvert1 , capsfilter ,
-    tee , queue1 , queue2 , nvjpegenc , appsink , encoder , rtmpcaps , flvmux , rtmpsink , nvvideoconvert2 , queue2filter , NULL);
+    gst_bin_add_many (GST_BIN(pipeline) , nvv4l2camerasrc , srccaps , nvvideoconvert1 , capsfilter , nvvideoconv , rgbcaps , videoconvert ,
+     tee , queue1 , queue2 , nvjpegenc , appsink , encoder , rtmpcaps , flvmux , rtmpsink , nvvideoconvert2 ,  queue1filter , NULL);
     
     //connect tee and queue1&queue2
     GstPadTemplate *tee_src_pad_template;
@@ -133,7 +132,13 @@ int main(int argc, char *argv[]) {
         gst_object_unref(pipeline);
         return -1;
     }
-    if(gst_element_link_many(queue1 , nvjpegenc ,appsink , NULL)!=TRUE ) /////
+    // if(gst_element_link_many(queue1 , nvjpegenc ,appsink , NULL)!=TRUE ) /////
+    // {
+    //     g_printerr("Elements2 could not be linked.\n");
+    //     gst_object_unref(pipeline);
+    //     return -1;
+    // }
+    if(gst_element_link_many(queue1 , nvvideoconvert2 , queue1filter , appsink , NULL)!=TRUE)// , nvvideoconvert2 , queue1filter ,, nvvideoconv , rgbcaps , videoconvert ,
     {
         g_printerr("Elements2 could not be linked.\n");
         gst_object_unref(pipeline);
@@ -148,7 +153,7 @@ int main(int argc, char *argv[]) {
 
     // 设置appsink的回调函数
     g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.jpg");
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.png");
     g_object_set(nvv4l2camerasrc , "device" , "/dev/video1" ,  NULL);
 
     GstCaps *caps;
@@ -180,7 +185,6 @@ int main(int argc, char *argv[]) {
     feature = gst_caps_features_new("memory:NVMM",NULL);
     gst_caps_set_features(filtercaps,0,feature);
     g_object_set(G_OBJECT(capsfilter) , "caps" , filtercaps , NULL);
-    g_object_set(G_OBJECT(queue2filter) , "caps" , filtercaps , NULL);/////////////////////
     gst_caps_unref(filtercaps);
     
     GstCaps *capsrtmp;
@@ -190,12 +194,44 @@ int main(int argc, char *argv[]) {
     g_object_set(rtmpcaps , "caps" , capsrtmp , NULL);
     gst_caps_unref(capsrtmp);
 
+    GstCaps *queue1caps;
+    queue1caps = gst_caps_new_simple("video/x-raw",
+                        "format" , G_TYPE_STRING , "RGBA",
+                        "width" , G_TYPE_INT , 960 ,
+                        "height" , G_TYPE_INT , 720 ,
+                        "framerate" , GST_TYPE_FRACTION , 30 , 1 ,
+                        NULL);
+    feature = gst_caps_features_new("memory:NVMM",NULL);
+    gst_caps_set_features(queue1caps,0,feature);
+    g_object_set(G_OBJECT(queue1filter) , "caps" , queue1caps , NULL); 
+    gst_caps_unref(queue1caps);
+    
+    GstCaps *capsrgb;
+    capsrgb = gst_caps_new_simple("video/x-raw",
+                                "format" , G_TYPE_STRING , "RGB",
+                                "width" , G_TYPE_INT , 960 ,
+                                "height" , G_TYPE_INT , 720 ,
+                                "framerate" , GST_TYPE_FRACTION , 30 , 1 ,
+                                NULL);
+    // feature = gst_caps_features_new("memory:NVMM",NULL);
+    gst_caps_set_features(capsrgb,0,feature);
+    g_object_set(G_OBJECT(rgbcaps) , "caps" , capsrgb , NULL);
+    gst_caps_unref(capsrgb);
+
+
     // 启动pipeline
     ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         g_printerr("Unable to set the pipeline to the playing state.\n");
         gst_object_unref(pipeline);
         return -1;
+    }
+
+    int flag=0;
+    ///////change the state of tee
+    if(flag ==0)
+    {
+       gst_element_unlink(tee, queue2);
     }
 
     // 等待直到错误发生或EOS
