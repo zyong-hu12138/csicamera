@@ -29,6 +29,7 @@
     GstPad *queue1_pad;
     GstPad *queue2_pad;
 void *dynamic();
+void test();
 int flag = 1;
 static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
     GstSample *sample;
@@ -116,18 +117,21 @@ int main(int argc, char *argv[]) {
     GstPadTemplate *tee_src_pad_template;
     tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(tee),"src_%u");
     tee_pad1 = gst_element_request_pad(tee,tee_src_pad_template,NULL,NULL);
-    tee_pad2 = gst_element_request_pad(tee,tee_src_pad_template,NULL,NULL);
+    // tee_pad2 = gst_element_request_pad(tee,tee_src_pad_template,NULL,NULL);
     queue1_pad = gst_element_get_static_pad(queue1,"sink");
-    queue2_pad = gst_element_get_static_pad(queue2,"sink");
-    if(gst_pad_link(tee_pad1,queue1_pad) != GST_PAD_LINK_OK ||
-     gst_pad_link(tee_pad2,queue2_pad) != GST_PAD_LINK_OK)
+    // queue2_pad = gst_element_get_static_pad(queue2,"sink");
+    pthread_t tid;
+    pthread_create(&tid,NULL,dynamic,NULL);
+  
+
+    if(gst_pad_link(tee_pad1,queue1_pad) != GST_PAD_LINK_OK )
     {
         g_printerr("Tee could not be linked.\n");
         gst_object_unref(pipeline);
         return -1;
     }
     gst_object_unref(queue1_pad);
-    gst_object_unref(queue2_pad);
+    
 
     ///connect all the elements
     if(gst_element_link_many(nvv4l2camerasrc , srccaps , nvvideoconvert1 , capsfilter , tee , NULL)!=TRUE)
@@ -244,14 +248,14 @@ void *dynamic()
     int ret;
     while(1)
     {
-        g_usleep(5 * GST_SECOND);
+        
         if(flag==1)
         {
-            ret = gst_element_set_state(pipeline, GST_STATE_PAUSED);
-            if (ret == GST_STATE_CHANGE_FAILURE) {
-                g_printerr("Unable to set the pipeline to the playing state.\n");
-                gst_object_unref(pipeline);
-            }
+            // ret = gst_element_set_state(pipeline, GST_STATE_PAUSED);
+            // if (ret == GST_STATE_CHANGE_FAILURE) {
+            //     g_printerr("Unable to set the pipeline to the playing state.\n");
+            //     gst_object_unref(pipeline);
+            // }
             GstPadTemplate *tee_src_pad_template;
             tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(tee), "src_%u");
             tee_pad2 = gst_element_request_pad(tee, tee_src_pad_template, NULL, NULL);
@@ -262,11 +266,12 @@ void *dynamic()
                 gst_object_unref(pipeline);
             }
             gst_object_unref(queue2_pad);
-            ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
-            if (ret == GST_STATE_CHANGE_FAILURE) {
-                g_printerr("Unable to set the pipeline to the playing state.\n");
-                gst_object_unref(pipeline);
-            }
+            flag = 0;
+            // ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+            // if (ret == GST_STATE_CHANGE_FAILURE) {
+            //     g_printerr("Unable to set the pipeline to the playing state.\n");
+            //     gst_object_unref(pipeline);
+            // }
         }
         if(flag ==2)
         {
@@ -285,4 +290,17 @@ void *dynamic()
             }
         }
     }
+}
+void test()
+{
+    GstPadTemplate *tee_src_pad_template;
+            tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(tee), "src_%u");
+            tee_pad2 = gst_element_request_pad(tee, tee_src_pad_template, NULL, NULL);
+            queue2_pad = gst_element_get_static_pad(queue2, "sink");
+            if(gst_pad_link(tee_pad2, queue2_pad) != GST_PAD_LINK_OK)
+            {
+                g_printerr("Tee could not be linked.\n");
+                gst_object_unref(pipeline);
+            }
+            gst_object_unref(queue2_pad);
 }
