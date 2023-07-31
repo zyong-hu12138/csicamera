@@ -60,12 +60,12 @@ static GstFlowReturn new_sample_callback(GstElement *sink, gpointer user_data) {
     // 处理数据
     // 这里可以对数据进行保存、处理或其他操作
     // 在本例中，我们将数据写入文件中
-    printf("%ld \n ",map.size);
-    FILE *file = fopen(filename, "wb");
-    if (file != NULL) {
-        fwrite(map.data, 1, map.size, file);
-        fclose(file);
-    }
+    // printf("%ld \n ",map.size);
+    // FILE *file = fopen(filename, "wb");
+    // if (file != NULL) {
+    //     fwrite(map.data, 1, map.size, file);
+    //     fclose(file);
+    // }
 // unsigned char *p = map.data;
 // for (size_t i = 0; i < map.size; i += 2) {
 //         // YUYV 格式的数据是交错的，每两个字节表示一个像素的Y和U/V分量
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     GstElement *rgbfilter;
     convertfilter = gst_element_factory_make("nvvidconv" , "convertfilter" );
     bgrfilter = gst_element_factory_make("capsfilter" , "bgrfilter" );
-    rgbconvert = gst_element_factory_make("videoconvert" , "rgbconvert" );
+    rgbconvert = gst_element_factory_make("nvvidconv" , "rgbconvert" );
     rgbfilter = gst_element_factory_make("capsfilter" , "rgbfilter" );
 
     if(!pipeline || !nvv4l2camerasrc || !srccaps || !nvvideoconvert1 || !capsfilter || 
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
         gst_object_unref(pipeline);
         return -1;
     }
-    if(gst_element_link_many(queue1 , convertfilter , bgrfilter ,appsink , rgbconvert , rgbfilter , NULL)!=TRUE ) ///// nvjpegenc
+    if(gst_element_link_many(queue1 , convertfilter , bgrfilter  , rgbconvert , rgbfilter , appsink , NULL)!=TRUE ) ///// nvjpegenc 
     {
         g_printerr("Elements2 could not be linked.\n");
         gst_object_unref(pipeline);
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     // 设置appsink的回调函数
     g_object_set(G_OBJECT(appsink), "emit-signals", TRUE, "sync", FALSE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.bgr");
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(new_sample_callback), "test.rgb");
     g_object_set(nvv4l2camerasrc , "device" , "/dev/video1" ,  NULL);
     ////设置srccaps格式     
     GstCaps *caps;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     gst_caps_set_features(caps,0,feature);
     g_object_set(G_OBJECT(srccaps) , "caps" , caps , NULL);
     gst_caps_unref(caps);
-
+    //设置tee输出的格式NV12
     GstCaps *filtercaps;
     filtercaps = gst_caps_new_simple("video/x-raw",
                                     "format" , G_TYPE_STRING ,"NV12",
@@ -169,17 +169,23 @@ int main(int argc, char *argv[]) {
     gst_caps_set_features(filtercaps,0,feature);
     g_object_set(G_OBJECT(capsfilter) , "caps" , filtercaps , NULL);
     gst_caps_unref(filtercaps);
-    
+    //希望将NV12转换为RGBA
     GstCaps *bgrcaps;
     bgrcaps = gst_caps_new_simple("video/x-raw",
-                                    "format" , G_TYPE_STRING ,"BGRx",
-                                     "width" , G_TYPE_INT , 960 ,
-                                     "height" , G_TYPE_INT , 720 , 
-                                     "framerate" , GST_TYPE_FRACTION , 30 , 1 ,NULL);
+                                    "format" , G_TYPE_STRING ,"I420",NULL);
     feature = gst_caps_features_new("memory:NVMM",NULL);
     gst_caps_set_features(bgrcaps,0,feature);
     g_object_set(G_OBJECT(bgrfilter) , "caps" , bgrcaps , NULL);
     gst_caps_unref(bgrcaps);
+    //希望得到RGB格式
+    GstCaps *rgbcaps;
+    rgbcaps = gst_caps_new_simple("video/x-raw",
+                                    "format" , G_TYPE_STRING ,"RGBA",
+                                     "width" , G_TYPE_INT , 960 ,
+                                     "height" , G_TYPE_INT , 720 , 
+                                     "framerate" , GST_TYPE_FRACTION , 30 , 1 ,NULL);
+    g_object_set(G_OBJECT(rgbfilter) , "caps" , rgbcaps , NULL);
+    gst_caps_unref(rgbcaps);
 
     ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     // 启动pipeline
@@ -287,6 +293,7 @@ void *dynamic()
     g_print("dynamic\n");
 
     sleep(10);
+    ///动态移除
     g_print("dynamic remove begin\n");
     ret = gst_element_set_state(pipeline, GST_STATE_PAUSED);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -320,4 +327,58 @@ void *dynamic()
         gst_object_unref(pipeline);
     }
     g_print("333333333333333333333333333\n");
+    sleep(5);
+    //第二次加入
+    g_print("444444444444444444444444444444\n");
+     queue2 = gst_element_factory_make("queue" , "queue2" );
+    encoder = gst_element_factory_make("omxh264enc" , "encoder" );
+    rtmpcaps = gst_element_factory_make("capsfilter" , "rtmpcaps" );
+    flvmux = gst_element_factory_make("flvmux" , "flvmux" );
+    rtmpsink = gst_element_factory_make("rtmpsink" , "rtmpsink" );
+    nvvideoconvert2 = gst_element_factory_make("nvvidconv" , "nvvideoconvert2" );
+
+    g_object_set(rtmpsink , "location" , "rtmp://livepush.orca-tech.cn/live/Testttttt?txSecret=8534bcc7c701c866c9a9ca4b1bde28e1&txTime=653B985A",NULL);
+    g_object_set(encoder , "bitrate" , 2000000 , NULL);
+    g_object_set(encoder , "insert-sps-pps" , TRUE , NULL);
+    g_object_set(encoder , "control-rate" , 1 , NULL);
+    g_object_set(encoder , "preset-level" , 1 , NULL);
+    g_object_set(encoder , "iframeinterval" , 30 , NULL);
+
+    // GstCaps *capsrtmp;
+    capsrtmp = gst_caps_new_simple("video/x-h264",
+                                    "stream-format" , G_TYPE_STRING , "avc",
+                                    NULL);
+    g_object_set(rtmpcaps , "caps" , capsrtmp , NULL);
+    gst_caps_unref(capsrtmp);
+    ret = gst_element_set_state(pipeline , GST_STATE_PAUSED);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("Unable to set the pipeline to the paused state.\n");
+        gst_object_unref(pipeline);
+    }
+
+    gst_bin_add_many(GST_BIN(pipeline),queue2 , encoder , rtmpcaps , flvmux , rtmpsink ,NULL);
+    g_print("add sucess !!!\n");
+    // GstPadTemplate *tee_src_pad_template;
+    tee_src_pad_template = gst_element_class_get_pad_template(GST_ELEMENT_GET_CLASS(tee), "src_%u");
+    tee_pad2 = gst_element_request_pad(tee, tee_src_pad_template, NULL, NULL);
+    queue2_pad = gst_element_get_static_pad(queue2, "sink");
+    if(gst_pad_link(tee_pad2, queue2_pad) != GST_PAD_LINK_OK)
+    {
+        g_printerr("Tee could not be linked.\n");
+        gst_object_unref(pipeline);
+    }
+    gst_object_unref(queue2_pad);
+    gst_pad_activate_mode(tee_pad2, GST_PAD_MODE_PUSH, TRUE);
+    if( gst_element_link_many(queue2 ,  encoder , rtmpcaps , flvmux , rtmpsink , NULL)!=TRUE)
+    {
+        g_printerr("Elements3 could not be linked.\n");
+        gst_object_unref(pipeline);
+    }
+    gst_element_sync_state_with_parent(queue2);
+    ret = gst_element_set_state(pipeline , GST_STATE_PLAYING);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        g_printerr("Unable to set the pipeline to the playing state.\n");
+        gst_object_unref(pipeline);
+    }
+    g_print("dynamic again !!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 }
