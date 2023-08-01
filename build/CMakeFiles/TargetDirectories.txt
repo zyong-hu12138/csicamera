@@ -1,0 +1,4 @@
+/home/task2/build/CMakeFiles/csicamera.dir
+/home/task2/build/CMakeFiles/main.dir
+/home/task2/build/CMakeFiles/edit_cache.dir
+/home/task2/build/CMakeFiles/rebuild_cache.dir

@@ -1,6 +1,7 @@
 #include "csicamera.h"
-
-//create the main element
+#include <unistd.h>
+CSIcamera* CSIcamera::instance = NULL;
+//create the main    element
 void CSIcamera::create()
 {
     gst_init(NULL,NULL);
@@ -59,10 +60,11 @@ CSIcamera::CSIcamera(char *dev_name , int width , int height , CallbackFunctionT
     instance = this;
     create();
     link();
+    
     g_object_set(nvv4l2camerasrc , "device" , dev_name , NULL);
     g_object_set(G_OBJECT(appsink) , "emit-signals" , TRUE , "sync" , FALSE , NULL);
-    g_signal_connect(appsink , "new-sample" , G_CALLBACK(sample_callback) , NULL);
-
+    g_signal_connect(appsink , "new-sample" , G_CALLBACK(sample_callback) , dev_name);
+    
     ////设置srccaps格式     
     GstCaps *caps;
     caps = gst_caps_new_simple("video/x-raw",
@@ -105,19 +107,22 @@ CSIcamera::CSIcamera(char *dev_name , int width , int height , CallbackFunctionT
     gst_caps_unref(rgbcaps);
 
     ret = gst_element_set_state(pipeline , GST_STATE_PLAYING);
+    g_print("???????????????????\n");
     if(ret == GST_STATE_CHANGE_FAILURE)
     {
         g_printerr("Unable to set the pipeline to the playing state.\n");
         gst_object_unref(pipeline);
     }
-
+    // sleep(10);
 }
-GstFlowReturn CSIcamera:: sample_callback(GstElement *sink )
+
+GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
 {
     GstSample *sample;
     GstBuffer *buffer;
     GstMapInfo map;
-    
+    char *devname = (char *)data;
+    // g_print("appsink callback\n");
     // 从appsink中获取sample
     g_signal_emit_by_name(sink, "pull-sample", &sample, NULL);
     if (sample == NULL) {
@@ -137,7 +142,8 @@ GstFlowReturn CSIcamera:: sample_callback(GstElement *sink )
         return GST_FLOW_ERROR;
     }
 
-    instance->callback(map.data , map.size);
+    instance->callback(devname , map.data , map.size);
+
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
 
