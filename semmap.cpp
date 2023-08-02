@@ -2,22 +2,23 @@
 #include <iostream>
 using namespace std;
 
-void Sem_map::init(key_t Semkey, key_t Shmkey, int width, int height)
+void Sem_map::init(key_t Semkey, key_t Shmkey, int width, int height ,char *devname, int id)
 {
     _Sem_key = Semkey;
     _Shm_key = Shmkey;
     printf("Semkey = %d, Shmkey = %d \n", _Sem_key, _Shm_key);
     Sem_args.val = 0;
-    Frame_size = width * height * 2;
+    Frame_size = width * height * 4;
     write_to_file = 0;
     memset(&BUF, 0, sizeof(BUF));
     int cnt = 0;
+    dev_name = devname;
+    this->id= id;
 }   
 
 
 int Sem_map::Write(unsigned char* Src,long int size)
 {
-
     int ret = 0;
     memcpy(BUF.buf[BUF.head], Src, size);
     if(write_to_file)
@@ -40,9 +41,8 @@ int Sem_map::Write(unsigned char* Src,long int size)
         printf("[ERROR] camid: %d, Sem dead, restart~~~", this->_Sem_key - 1110);
         return Sync_init();
     }
-    if(semctl(Semid, 0, GETVAL) >= BUFNUM)
+    if(int num=semctl(Semid, 0, GETVAL) >= BUFNUM)
         B();
-    
     return 1;
 }
 
@@ -54,7 +54,7 @@ int Sem_map::Sync_init()
         printf("semaphore init failed, retry times remain %d, now semkey = %d", Retry_times, _Sem_key);
         return -1;
     }
-    printf("semid = %d\n", Semid);
+    // printf("semid = %d\n", Semid);
     int ret = semctl(Semid, 0, SETVAL, Sem_args);
     if(ret == -1)
     {
@@ -94,6 +94,7 @@ int Sem_map::Proc(char* cam_file)
         // printf("fd = %d \n", Save_fd);
     }
     Shm_ID = shmget(_Shm_key, BUFNUM * Frame_size, IPC_CREAT | 0666);
+    printf("proc shmget = %d \n", Shm_ID);
     if(Shm_ID == -1)
     {
         perror("shmget");

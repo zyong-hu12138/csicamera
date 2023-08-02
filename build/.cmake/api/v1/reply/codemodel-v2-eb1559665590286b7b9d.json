@@ -6,7 +6,7 @@
 			[
 				{
 					"build" : ".",
-					"jsonFile" : "directory-.-f5ebdc15457944623624.json",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
 					"minimumCMakeVersion" : 
 					{
 						"string" : "3.12"
@@ -20,7 +20,7 @@
 					]
 				}
 			],
-			"name" : "",
+			"name" : "Debug",
 			"projects" : 
 			[
 				{
@@ -41,14 +41,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "csicamera::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-csicamera-4a4ceeec3249863d5e36.json",
+					"jsonFile" : "target-csicamera-Debug-c5a71b59462e638e4c1e.json",
 					"name" : "csicamera",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 0,
 					"id" : "main::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-main-6377cde49700a29f7610.json",
+					"jsonFile" : "target-main-Debug-f5fbd0f77511bcf28d46.json",
 					"name" : "main",
 					"projectIndex" : 0
 				}

@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/task2/build",
+  "command": "/usr/bin/g++ -Dcsicamera_EXPORTS -I/home/task2/csicamera -I/home/task2/PUBLIC -I/home/task2 -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -g -fPIC -std=gnu++11 -o CMakeFiles/csicamera.dir/csicamera.cpp.o -c /home/task2/csicamera.cpp",
+  "file": "/home/task2/csicamera.cpp"
+},
+{
+  "directory": "/home/task2/build",
+  "command": "/usr/bin/g++ -Dcsicamera_EXPORTS -I/home/task2/csicamera -I/home/task2/PUBLIC -I/home/task2 -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -g -fPIC -std=gnu++11 -o CMakeFiles/csicamera.dir/semmap.cpp.o -c /home/task2/semmap.cpp",
+  "file": "/home/task2/semmap.cpp"
+},
+{
+  "directory": "/home/task2/build",
+  "command": "/usr/bin/g++ -I/home/task2/csicamera -I/home/task2/PUBLIC -I/home/task2 -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -g -std=gnu++11 -o CMakeFiles/main.dir/main.cpp.o -c /home/task2/main.cpp",
+  "file": "/home/task2/main.cpp"
+}
+]

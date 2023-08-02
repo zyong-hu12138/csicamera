@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "main"
+			"path" : "libcsicamera.so"
 		}
 	],
 	"backtrace" : 1,
@@ -10,7 +10,7 @@
 	{
 		"commands" : 
 		[
-			"add_executable",
+			"add_library",
 			"include_directories"
 		],
 		"files" : 
@@ -25,7 +25,7 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 22,
+				"line" : 6,
 				"parent" : 0
 			},
 			{
@@ -42,7 +42,16 @@
 			"compileCommandFragments" : 
 			[
 				{
+					"fragment" : "-g -fPIC"
+				},
+				{
 					"fragment" : "-std=gnu++11"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"define" : "csicamera_EXPORTS"
 				}
 			],
 			"includes" : 
@@ -83,18 +92,12 @@
 			},
 			"sourceIndexes" : 
 			[
-				0
+				0,
+				1
 			]
 		}
 	],
-	"dependencies" : 
-	[
-		{
-			"backtrace" : 1,
-			"id" : "csicamera::@6890427a1f51a3e7e1df"
-		}
-	],
-	"id" : "main::@6890427a1f51a3e7e1df",
+	"id" : "csicamera::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -102,46 +105,12 @@
 			{
 				"fragment" : "",
 				"role" : "flags"
-			},
-			{
-				"fragment" : "-Wl,-rpath,/home/task2/build",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "-lgstreamer-1.0",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "-lgobject-2.0",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "-lglib-2.0",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "-lgstbase-1.0",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "-lgstapp-1.0",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 1,
-				"fragment" : "libcsicamera.so",
-				"role" : "libraries"
 			}
 		],
 		"language" : "CXX"
 	},
-	"name" : "main",
-	"nameOnDisk" : "main",
+	"name" : "csicamera",
+	"nameOnDisk" : "libcsicamera.so",
 	"paths" : 
 	{
 		"build" : ".",
@@ -153,7 +122,8 @@
 			"name" : "Source Files",
 			"sourceIndexes" : 
 			[
-				0
+				0,
+				1
 			]
 		}
 	],
@@ -162,9 +132,15 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "main.cpp",
+			"path" : "csicamera.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "semmap.cpp",
 			"sourceGroupIndex" : 0
 		}
 	],
-	"type" : "EXECUTABLE"
+	"type" : "SHARED_LIBRARY"
 }

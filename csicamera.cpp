@@ -57,15 +57,18 @@ void CSIcamera::link()
 CSIcamera::CSIcamera(int id, char *dev_name , int width , int height , CallbackFunctionType input_callback)
 :callback(input_callback)
 {
+
     instance = this;
+    instance->id = id;
     create();
     link();
     //初始化共享内存类
-    sem_map.init(key_t(1110+id) , key_t(2220+id),width,height);
+    sem_map.init(ftok(dev_name,1110+id) , ftok(dev_name,2220+id),width,height , dev_name,id);
+    sem_map.Proc("test");
 
     g_object_set(nvv4l2camerasrc , "device" , dev_name , NULL);
     g_object_set(G_OBJECT(appsink) , "emit-signals" , TRUE , "sync" , FALSE , NULL);
-    g_signal_connect(appsink , "new-sample" , G_CALLBACK(sample_callback) , dev_name);
+    g_signal_connect(appsink , "new-sample" , G_CALLBACK(sample_callback) , &sem_map);
     
     ////设置srccaps格式     
     GstCaps *caps;
@@ -123,7 +126,9 @@ GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
     GstSample *sample;
     GstBuffer *buffer;
     GstMapInfo map;
-    char *devname = (char *)data;
+    
+    Sem_map *sem_map = (Sem_map *)data;
+
     // g_print("appsink callback\n");
     // 从appsink中获取sample
     g_signal_emit_by_name(sink, "pull-sample", &sample, NULL);
@@ -143,13 +148,14 @@ GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
         gst_sample_unref(sample);
         return GST_FLOW_ERROR;
     }
-    g_print("!!!!!!!!!!!!!\n");
+    // g_print("!!!!!!!!!!!!!\n");
+    g_print("!!!!!!!!!!!!!!!,%d\n",sem_map->id);
     //保存到共享内存中
-    instance->sem_map.Proc("test.rpg");
-    int ret = instance->sem_map.Write( map.data , map.size);
+    
+    int ret = sem_map->Write( map.data , map.size);
     if(ret == 1)
-    g_print("success to write in\n");
-    instance->callback(instance->id , devname , map.data , map.size , instance->sem_map.Save_buf_ptr);
+    // g_print("success to write in\n");
+    instance->callback(sem_map->Semid , sem_map->dev_name , map.data , map.size , sem_map->Save_buf_ptr);
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);

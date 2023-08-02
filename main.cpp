@@ -17,10 +17,15 @@
 int count=0;
 void callback(int id, char *name , unsigned char *data , long int size, char *addr)
 {
-    int shm_id;
-    shm_id = shmget(key_t(2220+id) ,size,0666);
-    // char *addr;
-    sleep(5);
+    // int shm_id;
+    // shm_id = shmget(key_t(2220+id), size, 0666);
+    // printf("callback shmid:%d\n",shm_id);
+    // if(shm_id == -1)
+    // {
+    //     perror("shmget");
+    // }
+    // // char *addr;
+    // sleep(5);
     // addr = (char *)shmat(shm_id , NULL,0);
     // if(addr == (void *)-1)
     //     {
@@ -28,14 +33,20 @@ void callback(int id, char *name , unsigned char *data , long int size, char *ad
     //         printf("Fail father shmat.\n");
     //         exit(-1);
     //     }
-
-    printf("Shared memory string : %s\n",addr);
+    // // FILE *file = fopen("test.jpg", "wb");
+    // // if (file != NULL) {
+    // //     fwrite(addr, 1, size, file);
+    // //     fclose(file);
+    // // }
+    // printf("Shared memory string : %s\n",addr);
 }
 int main()
 {
-    CSIcamera camera1(1,"/dev/video1" , 960 , 720 , callback);
-    CSIcamera camera2(2,"/dev/video2" , 1280 , 960 , callback);
-    CSIcamera camera3(4,"/dev/video4" , 640 , 320 , callback);
+    CSIcamera camera3(4, "/dev/video4" , 640 , 320 , callback);
+    sleep(5);
+    CSIcamera camera2(2, "/dev/video2" , 1280 , 960 , callback);
+    sleep(5);
+    CSIcamera camera1(1, "/dev/video1" , 960 , 720 , callback);
     sleep(10);
     camera1.add_rtmp("rtmp://livepush.orca-tech.cn/live/Testttttt?txSecret=8534bcc7c701c866c9a9ca4b1bde28e1&txTime=653B985A");
     sleep(10);

@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../study"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"iostream": "cpp",
+			"array": "c",
+			"string_view": "c",
+			"initializer_list": "c",
+			"utility": "c"
+		}
+	}
+}

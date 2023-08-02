@@ -24,7 +24,7 @@ Date: 202207
 
 //#include "camera_v4l2_cuda.h"
 
-#define BUFNUM 20
+#define BUFNUM 10
 union semun {
 
    int   val;
@@ -43,7 +43,7 @@ class Sem_map
 public:
     char* Save_buf_ptr;
     Sem_map(){};
-    void init(key_t Semkey, key_t Shmkey, int width, int height);
+    void init(key_t Semkey, key_t Shmkey, int width, int height, char *devname , int id);
     ~Sem_map(){};   
      int Proc(char* cam_file);   //main
      int Sync_init();
@@ -51,7 +51,7 @@ public:
      int P();
      int V();
      int B();
-private:
+public:
     int Shm_ID;
     int write_to_file;
     int writensize;
@@ -67,6 +67,8 @@ private:
     int Semid;
     union semun Sem_args;
     int cnt;
+    int id;
+    char *dev_name;
 };
 
 
