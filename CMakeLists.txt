@@ -3,7 +3,7 @@ project(csicamera)
 set(CMAKE_CXX_STANDARD 11)
 
 # 添加共享库 csicamera
-add_library(csicamera SHARED csicamera.cpp)
+add_library(csicamera SHARED csicamera.cpp semmap.cpp)
 include_directories(csicamera PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR} 
     /usr/include/gstreamer-1.0/
     /usr/include/glib-2.0/
