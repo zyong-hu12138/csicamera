@@ -22,7 +22,6 @@ Date: 202207
 #include <stdlib.h>
 
 
-//#include "camera_v4l2_cuda.h"
 
 #define BUFNUM 10
 union semun {

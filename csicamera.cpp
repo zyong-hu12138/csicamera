@@ -112,13 +112,11 @@ CSIcamera::CSIcamera(int id, char *dev_name , int width , int height , CallbackF
     gst_caps_unref(rgbcaps);
 
     ret = gst_element_set_state(pipeline , GST_STATE_PLAYING);
-    g_print("???????????????????\n");
     if(ret == GST_STATE_CHANGE_FAILURE)
     {
         g_printerr("Unable to set the pipeline to the playing state.\n");
         gst_object_unref(pipeline);
     }
-    // sleep(10);
 }
 
 GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
@@ -128,8 +126,6 @@ GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
     GstMapInfo map;
     
     Sem_map *sem_map = (Sem_map *)data;
-
-    // g_print("appsink callback\n");
     // 从appsink中获取sample
     g_signal_emit_by_name(sink, "pull-sample", &sample, NULL);
     if (sample == NULL) {
@@ -148,13 +144,11 @@ GstFlowReturn CSIcamera:: sample_callback(GstElement *sink , gpointer data)
         gst_sample_unref(sample);
         return GST_FLOW_ERROR;
     }
-    // g_print("!!!!!!!!!!!!!\n");
-    g_print("!!!!!!!!!!!!!!!,%d\n",sem_map->id);
+
     //保存到共享内存中
     
     int ret = sem_map->Write( map.data , map.size);
     if(ret == 1)
-    // g_print("success to write in\n");
     instance->callback(sem_map->Semid , sem_map->dev_name , map.data , map.size , sem_map->Save_buf_ptr);
 
     gst_buffer_unmap(buffer, &map);
